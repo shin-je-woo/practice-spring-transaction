@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.UnexpectedRollbackException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -108,6 +109,43 @@ class MemberServiceTest {
 
         //then: member, log 둘 다 롤백된다.
         assertThat(memberRepository.find(username).isEmpty()).isTrue();
+        assertThat(logRepository.find(username).isEmpty()).isTrue();
+    }
+
+    /**
+     * MemberService    @Transactional:ON
+     * MemberRepository @Transactional:ON
+     * LogRepository    @Transactional:ON Exception
+     */
+    @Test
+    void recoverException_fail() {
+        //given
+        String username = "로그예외_recoverException_fail";
+
+        //when
+        assertThatThrownBy(() -> memberService.joinV2(username))
+                .isInstanceOf(UnexpectedRollbackException.class);
+
+        //then: member, log 둘 다 롤백된다.
+        assertThat(memberRepository.find(username).isEmpty()).isTrue();
+        assertThat(logRepository.find(username).isEmpty()).isTrue();
+    }
+
+    /**
+     * MemberService    @Transactional:ON
+     * MemberRepository @Transactional:ON
+     * LogRepository    @Transactional:ON(REQUIRES_NEW) Exception
+     */
+    @Test
+    void recoverException_success() {
+        //given
+        String username = "로그예외_recoverException_success";
+
+        //when
+        memberService.joinV2(username);
+
+        //then: member 커밋, log 롤백
+        assertThat(memberRepository.find(username).isPresent()).isTrue();
         assertThat(logRepository.find(username).isEmpty()).isTrue();
     }
 
